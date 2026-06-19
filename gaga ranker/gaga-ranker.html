@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lady Gaga Song Ranker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --pink: #C9A0E8;
+  --pink-light: #E0C8F4;
+  --pink-dim: #7B4A9E;
+  --pink-glow: rgba(201,160,232,0.12);
+  --black: #000000;
+  --bg: #050505;
+  --card-bg: #0E0A14;
+  --card-border: rgba(120,80,160,0.18);
+  --text: #F0EBF4;
+  --text-dim: #8A7B94;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  background: var(--black);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Iridescent bubble glow accents */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 20%, rgba(201,160,232,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 30%, rgba(232,160,200,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(180,140,220,0.05) 0%, transparent 50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* ===== HEADER ===== */
+.header {
+  text-align: center;
+  padding: 48px 0 24px;
+}
+
+.header h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(2.8rem, 10vw, 5rem);
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  color: var(--pink);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.header .subtitle {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  color: var(--text-dim);
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+
+.divider {
+  width: 40px;
+  height: 1px;
+  background: var(--pink-dim);
+  margin: 24px auto;
+  opacity: 0.4;
+}
+
+/* ===== SCREENS ===== */
+.screen { display: none; }
+.screen.active { display: block; animation: fadeUp 0.5s ease; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== ALBUM SELECT ===== */
+.album-select-intro {
+  text-align: center;
+  margin-bottom: 28px;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  font-weight: 300;
+  letter-spacing: 0.03em;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.album-card {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  aspect-ratio: 1;
+}
+
+.album-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(201,160,232,0.08); }
+.album-card.selected { border-color: var(--pink); }
+
+.album-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background: var(--pink);
+  color: var(--black);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12px;
+  z-index: 3;
+}
+
+.album-art-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.album-art-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.album-art-fallback {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+.album-art-wrapper img + .album-art-fallback { display: none; }
+
+.album-art-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.15) 60%, transparent 100%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 14px;
+}
+
+.album-card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-weight: 400;
+  font-size: 1.3rem;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--text);
+  z-index: 2;
+  letter-spacing: 0.05em;
+}
+
+.album-card-year {
+  font-size: 0.9rem;
+  color: var(--pink-dim);
+  margin-top: 3px;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 13px 34px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.btn-pink {
+  background: var(--pink);
+  color: var(--black);
+}
+.btn-pink:hover { background: var(--pink-light); }
+.btn-pink:disabled {
+  background: rgba(120,80,160,0.2);
+  color: #555;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--pink);
+  border: 1px solid var(--pink-dim);
+}
+.btn-outline:hover { background: var(--pink-glow); }
+
+.btn-container {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+
+.song-count-label {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 18px;
+  letter-spacing: 0.05em;
+}
+
+/* ===== BATTLE SCREEN ===== */
+.progress-section {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 2px;
+  background: rgba(120,80,160,0.25);
+  overflow: hidden;
+  margin: 12px 0 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--pink);
+  transition: width 0.4s ease;
+}
+
+.progress-text {
+  font-size: 1rem;
+  color: var(--text-dim);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+}
+
+.battle-arena {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  margin: 20px 0;
+  min-height: 340px;
+}
+
+.battle-card {
+  flex: 1;
+  background: var(--card-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.battle-card:hover {
+  border-color: var(--pink);
+  box-shadow: 0 0 30px rgba(201,160,232,0.08);
+}
+
+.battle-card:active { transform: scale(0.97); }
+
+.battle-card .card-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.battle-card .card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.battle-card .card-cover .cover-fallback {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+.battle-card .card-cover img + .cover-fallback { display: none; }
+
+.battle-card .card-cover::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(to top, var(--card-bg) 0%, transparent 100%);
+}
+
+.battle-card-info {
+  padding: 0 20px 24px;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: -16px;
+  position: relative;
+  z-index: 2;
+}
+
+.battle-song-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+  font-weight: 400;
+  line-height: 1.1;
+  margin-bottom: 6px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.battle-album-name {
+  font-size: 0.8rem;
+  color: var(--pink-dim);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.vs-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vs-badge span {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-dim);
+  font-weight: 300;
+}
+
+.skip-btn-container { text-align: center; margin-top: 10px; }
+
+.skip-btn {
+  font-family: 'Montserrat', sans-serif;
+  background: none;
+  border: 1px solid rgba(120,80,160,0.12);
+  color: var(--text-dim);
+  padding: 10px 28px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 400;
+  transition: all 0.3s ease;
+  letter-spacing: 0.06em;
+}
+
+.skip-btn:hover { border-color: #333; color: var(--text); }
+
+.end-early-container { text-align: center; margin-top: 16px; }
+
+.end-early-btn {
+  font-family: 'Montserrat', sans-serif;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+  text-decoration: none;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 2px;
+}
+
+.end-early-btn:hover { color: var(--pink-dim); }
+
+/* ===== RESULTS ===== */
+.results-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 28px;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  border-bottom: 1px solid rgba(120,80,160,0.12);
+}
+
+.results-tab {
+  font-family: 'Montserrat', sans-serif;
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+}
+
+.results-tab.active {
+  color: var(--pink);
+  border-bottom-color: var(--pink);
+}
+
+.results-list { list-style: none; }
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+  background: var(--card-bg);
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+  animation: fadeUp 0.4s ease backwards;
+}
+
+.result-item:hover { background: rgba(120,80,160,0.08); }
+
+.result-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--pink-dim);
+  min-width: 36px;
+  text-align: center;
+}
+
+.result-item:nth-child(1) .result-rank {
+  font-size: 1.8rem;
+  color: var(--pink);
+}
+
+.result-item:nth-child(1) {
+  border-color: rgba(201,160,232,0.2);
+  margin-bottom: 8px;
+}
+
+.result-item:nth-child(1) .result-rank::before {
+  content: '♛';
+  display: block;
+  font-size: 1rem;
+  line-height: 1;
+  margin-bottom: 2px;
+  color: var(--pink);
+}
+
+.result-art {
+  width: 44px;
+  height: 44px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.result-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.result-art .result-art-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.result-art img + .result-art-fallback { display: none; }
+
+.result-info { flex: 1; min-width: 0; }
+
+.result-song {
+  font-weight: 500;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-album {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+.result-elo {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-weight: 300;
+  min-width: 44px;
+  text-align: right;
+  letter-spacing: 0.03em;
+}
+
+/* Album results */
+.album-result-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: var(--card-bg);
+  animation: fadeUp 0.4s ease backwards;
+}
+
+.album-result-art {
+  width: 64px;
+  height: 64px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.album-result-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-result-art .album-result-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.album-result-art img + .album-result-fallback { display: none; }
+
+.album-result-info { flex: 1; }
+
+.album-result-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 400;
+  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+}
+
+.album-result-score {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.album-result-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  font-weight: 400;
+  color: var(--pink-dim);
+  min-width: 44px;
+  text-align: center;
+}
+
+.album-result-card:first-child .album-result-rank { color: var(--pink); }
+
+.album-result-bar {
+  height: 2px;
+  border-radius: 1px;
+  margin-top: 8px;
+  background: var(--pink-dim);
+  transition: width 0.6s ease;
+}
+
+/* Share */
+.share-section {
+  text-align: center;
+  margin-top: 40px;
+  padding: 28px;
+  background: var(--card-bg);
+  border-radius: 4px;
+  border: 1px solid var(--card-border);
+}
+
+.share-section h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  margin-bottom: 6px;
+  color: var(--pink);
+  letter-spacing: 0.05em;
+}
+
+.share-section p {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  font-weight: 300;
+}
+
+.share-text {
+  background: var(--black);
+  border: 1px solid rgba(120,80,160,0.12);
+  border-radius: 3px;
+  padding: 16px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text);
+  white-space: pre-wrap;
+  text-align: left;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+}
+
+/* ===== PHASE INDICATOR ===== */
+.phase-label {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--pink-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-weight: 400;
+}
+
+.phase-label span {
+  color: var(--pink);
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 600px) {
+  .battle-arena { flex-direction: column; min-height: auto; }
+  .battle-card .card-cover { aspect-ratio: 2/1; }
+  .vs-badge { padding: 4px 0; }
+  .album-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .header { padding: 28px 0 12px; }
+  .app { padding: 14px; }
+}
+
+/* ===== ANIMATIONS ===== */
+.battle-card.choosing { animation: chosen 0.3s ease; }
+
+@keyframes chosen {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.96); border-color: var(--pink); box-shadow: 0 0 30px rgba(201,160,232,0.15); }
+  100% { transform: scale(1); }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="header">
+    <h1>Lady Gaga</h1>
+    <div class="subtitle">song ranker</div>
+    <div class="divider"></div>
+  </div>
+
+  <!-- SCREEN 1: ALBUM SELECT -->
+  <div class="screen active" id="screen-select">
+    <p class="album-select-intro">Choose which albums to include</p>
+    <div class="album-grid" id="album-grid"></div>
+    <p class="song-count-label" id="song-count-label">0 songs selected</p>
+    <div class="btn-container">
+      <button class="btn btn-outline" id="btn-select-all">Select All</button>
+      <button class="btn btn-pink" id="btn-start" disabled>Start Ranking</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: BATTLE -->
+  <div class="screen" id="screen-battle">
+    <div class="progress-section">
+      <div class="phase-label" id="phase-label">Phase 1: <span>Sorting the field</span></div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <p class="progress-text" id="progress-text">Matchup 1 of 100</p>
+    </div>
+
+    <div class="battle-arena" id="battle-arena">
+      <div class="battle-card" id="card-left" onclick="pick('left')">
+        <div class="card-cover" id="cover-left"></div>
+        <div class="battle-card-info">
+          <div class="battle-song-title" id="title-left"></div>
+          <div class="battle-album-name" id="album-left"></div>
+        </div>
+      </div>
+      <div class="vs-badge"><span>vs</span></div>
+      <div class="battle-card" id="card-right" onclick="pick('right')">
+        <div class="card-cover" id="cover-right"></div>
+        <div class="battle-card-info">
+          <div class="battle-song-title" id="title-right"></div>
+          <div class="battle-album-name" id="album-right"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="skip-btn-container">
+      <button class="skip-btn" onclick="pick('skip')">Don't know / don't like either</button>
+    </div>
+    <div class="end-early-container">
+      <button class="end-early-btn" onclick="endEarly()">See my results so far</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="results-tabs">
+      <button class="results-tab active" onclick="showTab('songs')">Songs</button>
+      <button class="results-tab" onclick="showTab('albums')">Albums</button>
+    </div>
+    <div id="tab-songs"><ul class="results-list" id="results-songs"></ul></div>
+    <div id="tab-albums" style="display:none"><div id="results-albums"></div></div>
+    <div class="share-section">
+      <h3>Share Your Ranking</h3>
+      <p>Copy and send to the group chat</p>
+      <div class="share-text" id="share-text"></div>
+      <button class="btn btn-pink" onclick="copyResults()">Copy to Clipboard</button>
+    </div>
+    <div class="btn-container" style="margin-top:24px">
+      <button class="btn btn-outline" onclick="restart()">Rank Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ALBUM DATA
+// ============================================================
+// Cover images: place files in a "covers/" folder next to this HTML.
+// Name them exactly as the "cover" field below.
+// If a file is missing the app will show a color gradient instead.
+// ============================================================
+const ALBUMS = [
+  {
+    id:'the-fame', name:'The Fame', year:2008,
+    cover:'covers/the-fame.png',
+    gradient:'linear-gradient(135deg,#C9A84C,#E8D48B,#8B6914)',
+    songs:['Just Dance','LoveGame','Paparazzi','Poker Face','Eh, Eh (Nothing Else I Can Say)','Beautiful, Dirty, Rich','The Fame','Money Honey','Starstruck','Boys Boys Boys','Paper Gangsta','Brown Eyes','I Like It Rough','Summerboy']
+  },
+  {
+    id:'the-fame-monster', name:'The Fame Monster', year:2009,
+    cover:'covers/the-fame-monster.png',
+    gradient:'linear-gradient(135deg,#2A1A3A,#4A2A5A,#1A0A2A)',
+    songs:['Bad Romance','Alejandro','Monster','Speechless','Dance in the Dark','Telephone','So Happy I Could Die','Teeth']
+  },
+  {
+    id:'born-this-way', name:'Born This Way', year:2011,
+    cover:'covers/born-this-way.png',
+    gradient:'linear-gradient(135deg,#D0D0D0,#F0F0F0,#A0A0A0)',
+    songs:['Marry the Night','Born This Way','Government Hooker','Judas','Americano','Hair','Schei\u00DFe','Bloody Mary','Bad Kids','Fashion of His Love','Highway Unicorn (Road to Love)','Heavy Metal Lover','Electric Chapel','You and I','The Edge of Glory']
+  },
+  {
+    id:'artpop', name:'ARTPOP', year:2013,
+    cover:'covers/artpop.png',
+    gradient:'linear-gradient(135deg,#2244AA,#44AAEE,#AA22CC)',
+    songs:['Aura','Venus','G.U.Y.','Sexxx Dreams','Jewels N\' Drugs','MANiCURE','Do What U Want','ARTPOP','Swine','Donatella','Fashion!','Mary Jane Holland','Dope','Gypsy','Applause']
+  },
+  {
+    id:'joanne', name:'Joanne', year:2016,
+    cover:'covers/joanne.png',
+    gradient:'linear-gradient(135deg,#D4A088,#E8C4B0,#B87860)',
+    songs:['Diamond Heart','A-YO','Joanne','John Wayne','Dancin\' in Circles','Perfect Illusion','Million Reasons','Sinner\'s Prayer','Come to Mama','Hey Girl','Angel Down']
+  },
+  {
+    id:'chromatica', name:'Chromatica', year:2020,
+    cover:'covers/chromatica.png',
+    gradient:'linear-gradient(135deg,#FF1493,#FF69B4,#C71585)',
+    songs:['Alice','Stupid Love','Rain on Me','Free Woman','Fun Tonight','911','Plastic Doll','Sour Candy','Enigma','Replay','Sine from Above','1000 Doves','Babylon']
+  },
+  {
+    id:'mayhem', name:'Mayhem', year:2025,
+    cover:'covers/mayhem.png',
+    gradient:'linear-gradient(135deg,#E63946,#8B1A1A,#2A0A0A)',
+    songs:['Disease','Abracadabra','Garden of Eden','Perfect Celebrity','Vanish Into You','Killah','Zombieboy','LoveDrug','How Bad Do U Want Me','Don\'t Call Tonight','Shadow of a Man','The Beast','Blade of Grass','Die With a Smile']
+  }
+];
+
+const albumMap = {};
+ALBUMS.forEach(a => albumMap[a.id] = a);
+
+// ===== STATE =====
+let selectedAlbums = new Set();
+let songs = [];
+let removedSongs = new Set();
+
+// Phase tracking
+let phase = 'elo'; // 'elo' | 'mergesort'
+let matchupIndex = 0;
+
+// ELO phase state
+let eloTotal = 0;
+
+// Merge sort phase state
+const TOP_N = 15;
+let mergeQueue = [];
+let currentMerge = null; // { left, right, merged, li, ri }
+let mergeSortComparisons = 0;
+let mergeSortEstimate = 0;
+let topSongs = [];       // the top N songs entering merge sort
+let bottomSongs = [];    // songs NOT in top N, keep their ELO rank
+
+// ===== HELPERS =====
+function coverHTML(albumId, cls) {
+  const a = albumMap[albumId];
+  return `<img src="${a.cover}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <div class="${cls}" style="display:none;background:${a.gradient};width:100%;height:100%"></div>`;
+}
+
+// ===== INIT =====
+function init() {
+  const grid = document.getElementById('album-grid');
+  grid.innerHTML = '';
+  ALBUMS.forEach(album => {
+    const card = document.createElement('div');
+    card.className = 'album-card';
+    card.innerHTML = `
+      <div class="album-art-wrapper">
+        <img src="${album.cover}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <div class="album-art-fallback" style="display:none;background:${album.gradient}"></div>
+        <div class="album-art-overlay">
+          <div class="album-card-title">${album.name}</div>
+          <div class="album-card-year">${album.year}</div>
+        </div>
+      </div>`;
+    card.onclick = () => toggleAlbum(album.id, card);
+    grid.appendChild(card);
+  });
+  document.getElementById('btn-select-all').onclick = selectAll;
+  document.getElementById('btn-start').onclick = startRanking;
+}
+
+function toggleAlbum(id, card) {
+  selectedAlbums.has(id) ? (selectedAlbums.delete(id), card.classList.remove('selected'))
+                         : (selectedAlbums.add(id), card.classList.add('selected'));
+  updateCount();
+}
+
+function selectAll() {
+  const cards = document.querySelectorAll('.album-card');
+  const all = selectedAlbums.size === ALBUMS.length;
+  if (all) { selectedAlbums.clear(); cards.forEach(c=>c.classList.remove('selected')); }
+  else { ALBUMS.forEach(a=>selectedAlbums.add(a.id)); cards.forEach(c=>c.classList.add('selected')); }
+  updateCount();
+}
+
+function updateCount() {
+  let n = 0;
+  ALBUMS.forEach(a => { if (selectedAlbums.has(a.id)) n += a.songs.length; });
+  document.getElementById('song-count-label').textContent = `${n} songs selected`;
+  document.getElementById('btn-start').disabled = n < 4;
+}
+
+// ===== START =====
+function startRanking() {
+  songs = [];
+  ALBUMS.forEach(album => {
+    if (!selectedAlbums.has(album.id)) return;
+    album.songs.forEach(title => {
+      songs.push({ title, album:album.name, albumId:album.id, elo:1200, matches:0, wins:0 });
+    });
+  });
+  removedSongs = new Set();
+  matchupIndex = 0;
+  phase = 'elo';
+  // ELO phase: ~1.5x songs for smart matchmaking
+  eloTotal = Math.round(songs.length * 1.5);
+  showScreen('screen-battle');
+  nextMatchup();
+}
+
+function getActive() { return songs.filter((_,i) => !removedSongs.has(i)); }
+
+// ===== ELO PHASE: SMART MATCHMAKING =====
+// Pairs songs with similar scores so every matchup is meaningful.
+function eloNextMatchup() {
+  const active = getActive();
+  if (active.length < 2) { showResults(); return; }
+
+  if (matchupIndex >= eloTotal) {
+    startMergeSortPhase();
+    return;
+  }
+
+  // Song A: always pick from songs with the FEWEST matches.
+  // This guarantees no song gets match N+1 until ALL songs have had N.
+  const minMatches = Math.min(...active.map(s => s.matches));
+  const leastMatched = active.filter(s => s.matches === minMatches);
+  const a = leastMatched[Math.floor(Math.random() * leastMatched.length)];
+
+  // Song B: prefer a similar-ELO opponent who also has few matches
+  const opponents = active.filter(s => s !== a);
+  // Score opponents: lower is better (close ELO + fewer matches = ideal)
+  opponents.sort((x, y) => {
+    const xScore = Math.abs(x.elo - a.elo) + (x.matches - minMatches) * 100;
+    const yScore = Math.abs(y.elo - a.elo) + (y.matches - minMatches) * 100;
+    return xScore - yScore;
+  });
+  // Pick from the top candidates with slight randomness
+  const topPicks = opponents.slice(0, Math.min(4, opponents.length));
+  const b = topPicks[Math.floor(Math.random() * topPicks.length)];
+
+  showMatchup(a, b);
+}
+
+// ===== MERGE SORT PHASE =====
+function startMergeSortPhase() {
+  const active = getActive();
+  if (active.length < 2) { showResults(); return; }
+
+  phase = 'mergesort';
+  matchupIndex = 0;
+
+  // Take the top N by ELO score
+  const sorted = [...active].sort((a, b) => b.elo - a.elo);
+  const n = Math.min(TOP_N, sorted.length);
+  topSongs = sorted.slice(0, n);
+  bottomSongs = sorted.slice(n);
+
+  // Initialize merge sort: each song starts as its own sorted array
+  mergeQueue = topSongs.map(s => [s]);
+  currentMerge = null;
+  mergeSortComparisons = 0;
+  // Estimate: n * ceil(log2(n)) is upper bound for merge sort comparisons
+  mergeSortEstimate = Math.ceil(n * Math.log2(n || 1));
+
+  updatePhaseUI();
+  advanceMergeSort();
+}
+
+function advanceMergeSort() {
+  // If we're mid-merge, show the next comparison
+  if (currentMerge) {
+    const { left, right, li, ri } = currentMerge;
+    if (li < left.length && ri < right.length) {
+      showMatchup(left[li], right[ri]);
+      return;
+    }
+    // One side exhausted — finish this merge
+    finishCurrentMerge();
+  }
+
+  // Start next merge or finish
+  if (mergeQueue.length <= 1) {
+    // Done! mergeQueue[0] is the fully sorted top-N
+    showResults();
+    return;
+  }
+
+  // Take next two sub-arrays to merge
+  const left = mergeQueue.shift();
+  const right = mergeQueue.shift();
+  currentMerge = { left, right, merged: [], li: 0, ri: 0 };
+  advanceMergeSort(); // will hit the showMatchup branch above
+}
+
+function finishCurrentMerge() {
+  if (!currentMerge) return;
+  const { left, right, merged, li, ri } = currentMerge;
+  // Append any remaining elements
+  for (let i = li; i < left.length; i++) merged.push(left[i]);
+  for (let i = ri; i < right.length; i++) merged.push(right[i]);
+  mergeQueue.push(merged);
+  currentMerge = null;
+}
+
+function mergeSortPick(winner) {
+  if (!currentMerge) return;
+  const { left, right, merged } = currentMerge;
+  if (winner === 'left') {
+    merged.push(left[currentMerge.li]);
+    currentMerge.li++;
+  } else {
+    merged.push(right[currentMerge.ri]);
+    currentMerge.ri++;
+  }
+  mergeSortComparisons++;
+
+  // Check if one side is now exhausted
+  if (currentMerge.li >= left.length || currentMerge.ri >= right.length) {
+    finishCurrentMerge();
+  }
+
+  updateProgress();
+  setTimeout(advanceMergeSort, 200);
+}
+
+// ===== SHARED UI =====
+function showMatchup(a, b) {
+  // Store current pair for pick()
+  const idxA = songs.indexOf(a);
+  const idxB = songs.indexOf(b);
+  window._currentPairIndices = [idxA, idxB];
+  window._currentPairSongs = [a, b];
+
+  document.getElementById('title-left').textContent = a.title;
+  document.getElementById('album-left').textContent = a.album;
+  document.getElementById('cover-left').innerHTML = coverHTML(a.albumId, 'cover-fallback');
+  document.getElementById('title-right').textContent = b.title;
+  document.getElementById('album-right').textContent = b.album;
+  document.getElementById('cover-right').innerHTML = coverHTML(b.albumId, 'cover-fallback');
+  updatePhaseUI();
+  updateProgress();
+}
+
+function updatePhaseUI() {
+  const label = document.getElementById('phase-label');
+  if (phase === 'elo') {
+    label.innerHTML = 'Phase 1: <span>Sorting the field</span>';
+  } else {
+    label.innerHTML = 'Phase 2: <span>Locking in your favorites</span>';
+  }
+}
+
+function updateProgress() {
+  let pct, text;
+  if (phase === 'elo') {
+    pct = Math.min(100, (matchupIndex / eloTotal) * 100);
+    text = `Matchup ${matchupIndex + 1} of ~${eloTotal}`;
+  } else {
+    pct = Math.min(100, (mergeSortComparisons / mergeSortEstimate) * 100);
+    text = `Finalizing · comparison ${mergeSortComparisons + 1}`;
+  }
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = text;
+}
+
+function pick(choice) {
+  const [iA, iB] = window._currentPairIndices;
+  const [a, b] = window._currentPairSongs;
+
+  if (choice === 'skip') {
+    // Remove both songs entirely
+    removedSongs.add(iA);
+    removedSongs.add(iB);
+    if (phase === 'mergesort' && currentMerge) {
+      // Remove both from the current merge arrays and move on
+      currentMerge.left = currentMerge.left.filter(s => s !== a && s !== b);
+      currentMerge.right = currentMerge.right.filter(s => s !== a && s !== b);
+      // Adjust indices
+      currentMerge.li = Math.min(currentMerge.li, currentMerge.left.length);
+      currentMerge.ri = Math.min(currentMerge.ri, currentMerge.right.length);
+      if (currentMerge.li >= currentMerge.left.length || currentMerge.ri >= currentMerge.right.length) {
+        finishCurrentMerge();
+      }
+      mergeSortComparisons++;
+      updateProgress();
+      setTimeout(advanceMergeSort, 200);
+    } else {
+      matchupIndex++;
+      setTimeout(nextMatchup, 200);
+    }
+    return;
+  }
+
+  // Flash chosen card
+  const cardId = choice === 'left' ? 'card-left' : 'card-right';
+  document.getElementById(cardId).classList.add('choosing');
+  setTimeout(() => document.getElementById(cardId).classList.remove('choosing'), 300);
+
+  if (phase === 'elo') {
+    // Update ELO scores
+    const w = choice === 'left' ? a : b;
+    const l = choice === 'left' ? b : a;
+    const K = 40;
+    const eW = 1 / (1 + Math.pow(10, (l.elo - w.elo) / 400));
+    const eL = 1 - eW;
+    w.elo += K * (1 - eW);
+    l.elo += K * (0 - eL);
+    w.wins++;
+    w.matches++;
+    l.matches++;
+    matchupIndex++;
+    setTimeout(nextMatchup, 200);
+  } else {
+    // Merge sort: pick winner
+    mergeSortPick(choice === 'left' ? 'left' : 'right');
+  }
+}
+
+function nextMatchup() {
+  if (phase === 'elo') {
+    eloNextMatchup();
+  } else {
+    advanceMergeSort();
+  }
+}
+
+function endEarly() {
+  if (phase === 'elo') {
+    // Skip to merge sort with whatever ELO data we have
+    startMergeSortPhase();
+  } else {
+    // End merge sort early — use current partial results
+    if (currentMerge) finishCurrentMerge();
+    // Drain remaining queue by concatenating
+    while (mergeQueue.length > 1) {
+      const a = mergeQueue.shift();
+      const b = mergeQueue.shift();
+      mergeQueue.push([...a, ...b]);
+    }
+    showResults();
+  }
+}
+
+// ===== RESULTS =====
+function showResults() {
+  showScreen('screen-results');
+
+  const active = getActive();
+  let ranked;
+
+  if (phase === 'mergesort' && mergeQueue.length === 1) {
+    // Merge sort completed: use precise top-N order + ELO-ranked remainder
+    ranked = [...mergeQueue[0], ...bottomSongs.filter(s => !removedSongs.has(songs.indexOf(s)))];
+  } else {
+    // Ended during ELO or early — fall back to ELO ranking
+    ranked = [...active].sort((a, b) => b.elo - a.elo);
+  }
+
+  // Song list
+  const songList = document.getElementById('results-songs');
+  songList.innerHTML = '';
+  ranked.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.className = 'result-item';
+    li.style.animationDelay = `${i * 0.03}s`;
+    li.innerHTML = `
+      <div class="result-rank">${i + 1}</div>
+      <div class="result-art">${coverHTML(s.albumId, 'result-art-fallback')}</div>
+      <div class="result-info">
+        <div class="result-song">${s.title}</div>
+        <div class="result-album">${s.album}</div>
+      </div>
+      <div class="result-elo">${Math.round(s.elo)}</div>`;
+    songList.appendChild(li);
+  });
+
+  // Album rankings — skipped songs count as dead-last (score 0)
+  const albumScores = {};
+  // First, initialize with total track counts so skipped songs are factored in
+  ALBUMS.forEach(album => {
+    if (!selectedAlbums.has(album.id)) return;
+    albumScores[album.id] = {
+      name: album.name,
+      id: album.id,
+      total: 0,
+      totalTracks: album.songs.length,
+      rankedCount: 0,
+      skippedCount: 0
+    };
+  });
+  // Add rank-based scores for songs that survived
+  ranked.forEach((s, i) => {
+    if (!albumScores[s.albumId]) return;
+    const rankScore = ranked.length - i;
+    albumScores[s.albumId].total += rankScore;
+    albumScores[s.albumId].rankedCount++;
+  });
+  // Count skipped songs per album (they score 0, dragging the average down)
+  songs.forEach((s, i) => {
+    if (removedSongs.has(i) && albumScores[s.albumId]) {
+      albumScores[s.albumId].skippedCount++;
+    }
+  });
+
+  const albumRanked = Object.values(albumScores)
+    .map(a => ({
+      ...a,
+      // Average across ALL tracks including skipped (which score 0)
+      avg: a.total / a.totalTracks
+    }))
+    .sort((a, b) => b.avg - a.avg);
+  const maxA = albumRanked[0]?.avg || 1;
+  const minA = albumRanked[albumRanked.length - 1]?.avg || 0;
+  const range = maxA - minA || 1;
+
+  const albumDiv = document.getElementById('results-albums');
+  albumDiv.innerHTML = '';
+  albumRanked.forEach((a, i) => {
+    const bar = ((a.avg - minA) / range) * 80 + 20;
+    const card = document.createElement('div');
+    card.className = 'album-result-card';
+    card.style.animationDelay = `${i * 0.06}s`;
+    card.innerHTML = `
+      <div class="album-result-rank">${i + 1}</div>
+      <div class="album-result-art">${coverHTML(a.id, 'album-result-fallback')}</div>
+      <div class="album-result-info">
+        <div class="album-result-name">${a.name}</div>
+        <div class="album-result-score">Avg score: ${Math.round(a.avg)} · ${a.rankedCount} ranked${a.skippedCount ? ' · ' + a.skippedCount + ' skipped' : ''}</div>
+        <div class="album-result-bar" style="width:${bar}%"></div>
+      </div>`;
+    albumDiv.appendChild(card);
+  });
+
+  // Share text
+  const top5 = ranked.slice(0, 5);
+  const bot3 = ranked.slice(-3).reverse();
+  let txt = `★ My Lady Gaga Song Ranking ★\n\n👑 TOP 5:\n`;
+  top5.forEach((s, i) => txt += `${i + 1}. ${s.title} (${s.album})\n`);
+  txt += `\n📀 ALBUM RANKING:\n`;
+  albumRanked.forEach((a, i) => txt += `${i + 1}. ${a.name}\n`);
+  txt += `\n🔻 BOTTOM 3:\n`;
+  bot3.forEach((s, i) => txt += `${ranked.length - 2 + i}. ${s.title} (${s.album})\n`);
+  document.getElementById('share-text').textContent = txt;
+  showTab('songs');
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.results-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-songs').style.display = tab === 'songs' ? '' : 'none';
+  document.getElementById('tab-albums').style.display = tab === 'albums' ? '' : 'none';
+  document.querySelectorAll('.results-tab')[tab === 'songs' ? 0 : 1].classList.add('active');
+}
+
+function copyResults() {
+  const text = document.getElementById('share-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const b = event.target; b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy to Clipboard', 2000);
+  }).catch(() => { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); });
+}
+
+function restart() { selectedAlbums.clear(); showScreen('screen-select'); init(); }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+init();
+</script>
+</body>
+</html>
